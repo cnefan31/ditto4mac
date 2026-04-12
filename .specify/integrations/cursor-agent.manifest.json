@@ -1,0 +1,18 @@
+{
+  "integration": "cursor-agent",
+  "version": "0.5.0",
+  "installed_at": "2026-04-12T16:53:06.021195+00:00",
+  "files": {
+    ".cursor/commands/speckit.analyze.md": "b92c88059063348e222d2272b4afcf7a9a71e9775111c7d994c0d36efc6c7bbf",
+    ".cursor/commands/speckit.checklist.md": "3414c94e289f0994d4175669bdd68ec24a51ed7d10b52a076d6b2997c243ce33",
+    ".cursor/commands/speckit.clarify.md": "b4ac3c08166cdbe3df087ddd82afc258256db9e19fae30034aa758b4a114f2dc",
+    ".cursor/commands/speckit.constitution.md": "45620ce5a443406efd05d7f48f90878df59b70ee5732ca1827710dfa0842ce80",
+    ".cursor/commands/speckit.implement.md": "0542e191674abaf1b05e8a425d707052b7b00193a2ca9068121e202c80614156",
+    ".cursor/commands/speckit.plan.md": "65d6881e6152650afd694b9443624911042360cce11150ee6d0ba48e7f30cca1",
+    ".cursor/commands/speckit.specify.md": "d51f5b1a5b050a0abc90f140bcf17e6cc01e9cee7d675c1b267048e88ac7dac7",
+    ".cursor/commands/speckit.tasks.md": "b205be629381697381f8d96d329d30e9e8483455427241bbce16d184fd3a8f90",
+    ".cursor/commands/speckit.taskstoissues.md": "8634adbd5d6dc2cdacf8dfa60d4509df03aedf937b682308c1f84e994023826e",
+    ".specify/integrations/cursor-agent/scripts/update-context.ps1": "b9926450bd00c225b32617188abaedbe9fb31c1722f68b9d984c87372c65c55a",
+    ".specify/integrations/cursor-agent/scripts/update-context.sh": "808bb864ae28438418e246d5bcca623d34d6a3481ff3bf422c0a5ae5ba76081b"
+  }
+}
