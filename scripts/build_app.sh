@@ -33,7 +33,9 @@ if [ "$UNIVERSAL" = "1" ]; then
     fi
 fi
 
-APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
+# .app bundle 统一放在默认构建目录，与二进制实际输出路径解耦
+OUTPUT_DIR="$PROJECT_ROOT/.build/${BUILD_MODE}"
+APP_BUNDLE="$OUTPUT_DIR/$APP_NAME.app"
 CONTENTS="$APP_BUNDLE/Contents"
 MACOS_DIR="$CONTENTS/MacOS"
 RESOURCES_DIR="$CONTENTS/Resources"
