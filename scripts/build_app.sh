@@ -86,6 +86,9 @@ cat > "$CONTENTS/Info.plist" << 'PLIST'
 </plist>
 PLIST
 
+# Ad-hoc 签名（无 Apple 开发者证书时的基本签名）
+codesign --force --deep --sign - "$APP_BUNDLE" 2>/dev/null || echo "Warning: codesign skipped"
+
 ARCH_INFO=""
 if [ "$UNIVERSAL" = "1" ]; then
     ARCH_INFO=" universal"
