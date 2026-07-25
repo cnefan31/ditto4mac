@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Universal Binary
+        run: bash scripts/build_app.sh release --universal
+
+      - name: Create zip archive
+        run: |
+          cd .build/release
+          ditto -c -k --keepParent Ditto4Mac.app "Ditto4Mac-${{ github.ref_name }}.zip"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: .build/release/Ditto4Mac-*.zip
+          generate_release_notes: true
+          body: |
+            ## 安装说明
+
+            1. 下载 `Ditto4Mac-*.zip` 并解压
+            2. 将 `Ditto4Mac.app` 拖到 `/Applications/` 目录
+            3. 首次打开：右键点击 → **打开**（未签名应用需手动允许）
+            4. 在 **系统设置 → 隐私与安全性 → 辅助功能** 中授权 Ditto4Mac
+
+            ## 使用方法
+
+            - **快捷键**：`Cmd+Shift+V` 弹出历史窗口
+            - **左键菜单栏图标**：弹出历史窗口
+            - **右键菜单栏图标**：关于 / 设置 / 退出
+
+            ## 系统要求
+
+            - macOS 13 (Ventura)+
+            - Universal Binary（同时支持 Apple Silicon 和 Intel）

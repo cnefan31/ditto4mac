@@ -4,15 +4,25 @@ set -e
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="Ditto4Mac"
 BUILD_MODE="${1:-debug}"
+UNIVERSAL=0
+if [ "$2" = "--universal" ]; then
+    UNIVERSAL=1
+fi
+
+ARCH_FLAGS=""
+if [ "$UNIVERSAL" = "1" ]; then
+    ARCH_FLAGS="--arch arm64 --arch x86_64"
+    echo "Building universal binary (arm64 + x86_64)..."
+fi
 
 if [ "$BUILD_MODE" = "release" ]; then
     BUILD_DIR="$PROJECT_ROOT/.build/release"
     echo "Building $APP_NAME (release)..."
-    cd "$PROJECT_ROOT" && swift build -c release 2>&1
+    cd "$PROJECT_ROOT" && swift build -c release $ARCH_FLAGS 2>&1
 else
     BUILD_DIR="$PROJECT_ROOT/.build/debug"
     echo "Building $APP_NAME (debug)..."
-    cd "$PROJECT_ROOT" && swift build 2>&1
+    cd "$PROJECT_ROOT" && swift build $ARCH_FLAGS 2>&1
 fi
 
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
@@ -66,5 +76,10 @@ cat > "$CONTENTS/Info.plist" << 'PLIST'
 </plist>
 PLIST
 
-echo "✓ App bundle created: $APP_BUNDLE ($BUILD_MODE)"
+ARCH_INFO=""
+if [ "$UNIVERSAL" = "1" ]; then
+    ARCH_INFO=" universal"
+fi
+
+echo "✓ App bundle created:$ARCH_INFO $APP_BUNDLE ($BUILD_MODE)"
 echo "  Run: open $APP_BUNDLE"
