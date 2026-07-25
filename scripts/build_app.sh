@@ -16,13 +16,21 @@ if [ "$UNIVERSAL" = "1" ]; then
 fi
 
 if [ "$BUILD_MODE" = "release" ]; then
-    BUILD_DIR="$PROJECT_ROOT/.build/release"
     echo "Building $APP_NAME (release)..."
     cd "$PROJECT_ROOT" && swift build -c release $ARCH_FLAGS 2>&1
+    BUILD_DIR="$PROJECT_ROOT/.build/release"
 else
-    BUILD_DIR="$PROJECT_ROOT/.build/debug"
     echo "Building $APP_NAME (debug)..."
     cd "$PROJECT_ROOT" && swift build $ARCH_FLAGS 2>&1
+    BUILD_DIR="$PROJECT_ROOT/.build/debug"
+fi
+
+# Universal binary 走 xcbuild，输出路径可能与默认不同，动态获取
+if [ "$UNIVERSAL" = "1" ]; then
+    BIN_PATH=$(cd "$PROJECT_ROOT" && swift build -c ${BUILD_MODE} $ARCH_FLAGS --show-bin-path 2>/dev/null) || true
+    if [ -n "$BIN_PATH" ]; then
+        BUILD_DIR="$PROJECT_ROOT/$BIN_PATH"
+    fi
 fi
 
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
