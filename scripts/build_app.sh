@@ -29,7 +29,7 @@ fi
 if [ "$UNIVERSAL" = "1" ]; then
     BIN_PATH=$(cd "$PROJECT_ROOT" && swift build -c ${BUILD_MODE} $ARCH_FLAGS --show-bin-path 2>/dev/null) || true
     if [ -n "$BIN_PATH" ]; then
-        BUILD_DIR="$PROJECT_ROOT/$BIN_PATH"
+        BUILD_DIR="$BIN_PATH"
     fi
 fi
 
