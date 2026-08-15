@@ -16,10 +16,5 @@ let package = Package(
             path: "Ditto4Mac",
             exclude: [".idea"]
         ),
-        .testTarget(
-            name: "Ditto4MacTests",
-            dependencies: ["Ditto4Mac"],
-            path: "Tests/Ditto4MacTests"
-        ),
     ]
 )
