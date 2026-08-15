@@ -8,7 +8,7 @@ final class ClipboardViewModel: ObservableObject {
     @Published var selectedItemId: String?
     
     private let storage: StorageService
-    private let monitor: ClipboardMonitor
+    private var monitor: ClipboardMonitor
     private let hotkey: HotkeyManager
     
     private var cachedSettings: AppSettings
@@ -23,11 +23,7 @@ final class ClipboardViewModel: ObservableObject {
         items = self.storage.loadItems()
         
         // 设置剪切板监听
-        monitor.onNewContent = { [weak self] text in
-            Task { @MainActor [weak self] in
-                self?.handleNewContent(text)
-            }
-        }
+        configureMonitor()
         
         // 设置快捷键回调
         hotkey.onHotkeyTriggered = { [weak self] in
@@ -131,15 +127,49 @@ final class ClipboardViewModel: ObservableObject {
         storage.loadText(for: item)
     }
     
-    /// 更新设置
-    func updateSettings(_ settings: AppSettings) {
-        cachedSettings = settings
-        storage.saveSettings(settings)
-        
-        // 如果轮询间隔变化，重启监控
-        if abs(settings.pollingInterval - cachedSettings.pollingInterval) > 0.01 {
+    /// 更新设置；返回是否全部应用成功（存储路径迁移失败时会回滚）
+    @discardableResult
+    func updateSettings(_ newSettings: AppSettings) -> Bool {
+        let oldSettings = cachedSettings
+        cachedSettings = newSettings
+        storage.saveSettings(newSettings)
+
+        // 存储路径变化时先执行迁移；失败则回滚设置缓存和已保存的 settings
+        if oldSettings.storagePath != newSettings.storagePath {
+            guard storage.migrateStorage(to: newSettings.storagePath) else {
+                cachedSettings = oldSettings
+                storage.saveSettings(oldSettings)
+                return false
+            }
+        }
+
+        // 热键变化时立即重新注册
+        if oldSettings.hotkeyModifiers != newSettings.hotkeyModifiers ||
+           oldSettings.hotkeyKeyCode != newSettings.hotkeyKeyCode {
+            hotkey.registerHotkey(
+                modifiers: newSettings.hotkeyModifiers,
+                keyCode: newSettings.hotkeyKeyCode
+            )
+        }
+
+        // 轮询间隔变化时重建并重启 monitor
+        if abs(oldSettings.pollingInterval - newSettings.pollingInterval) > 0.01 {
             monitor.stopMonitoring()
-            _ = ClipboardMonitor(pollingInterval: settings.pollingInterval)
+            monitor = ClipboardMonitor(pollingInterval: newSettings.pollingInterval)
+            configureMonitor()
+            monitor.startMonitoring()
+        }
+
+        return true
+    }
+
+    // MARK: - 私有方法
+
+    private func configureMonitor() {
+        monitor.onNewContent = { [weak self] text in
+            Task { @MainActor [weak self] in
+                self?.handleNewContent(text)
+            }
         }
     }
     

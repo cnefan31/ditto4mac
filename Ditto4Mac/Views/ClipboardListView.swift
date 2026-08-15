@@ -59,7 +59,6 @@ struct ClipboardListView: View {
                                 item: item,
                                 text: text,
                                 isPinned: item.isPinned,
-                                isHighlighted: !viewModel.searchText.isEmpty,
                                 searchText: viewModel.searchText,
                                 isEven: index.isMultiple(of: 2),
                                 onTap: {

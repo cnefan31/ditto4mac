@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var statusItem: NSStatusItem!
     private var clipboardPanel: NSPanel?
     private var settingsWindow: NSWindow?
@@ -125,52 +125,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - 设置窗口
 
     @objc private func openSettings() {
-        if let window = settingsWindow, window.isVisible {
-            window.makeKeyAndOrderFront(nil)
-            return
+        let window: NSWindow
+        if let existing = settingsWindow {
+            window = existing
+        } else {
+            let newWindow = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 420, height: 440),
+                styleMask: [.titled, .closable, .resizable],
+                backing: .buffered,
+                defer: false
+            )
+            newWindow.title = "Ditto4Mac 设置"
+            newWindow.isReleasedWhenClosed = false
+            newWindow.delegate = self
+            newWindow.contentViewController = NSHostingController(
+                rootView: SettingsView(viewModel: viewModel)
+            )
+            settingsWindow = newWindow
+            window = newWindow
         }
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 440),
-            styleMask: [.titled, .closable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "Ditto4Mac 设置"
-        window.isReleasedWhenClosed = false
-        window.contentViewController = NSHostingController(
-            rootView: SettingsView(viewModel: viewModel)
-        )
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
-        settingsWindow = window
     }
 
     // MARK: - 关于窗口
 
     @objc private func openAbout() {
-        if let window = aboutWindow, window.isVisible {
-            window.makeKeyAndOrderFront(nil)
-            return
+        let window: NSWindow
+        if let existing = aboutWindow {
+            window = existing
+        } else {
+            let newWindow = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 360, height: 280),
+                styleMask: [.titled, .closable],
+                backing: .buffered,
+                defer: false
+            )
+            newWindow.title = "关于 Ditto4Mac"
+            newWindow.isReleasedWhenClosed = false
+            newWindow.delegate = self
+            newWindow.contentViewController = NSHostingController(rootView: AboutView())
+            aboutWindow = newWindow
+            window = newWindow
         }
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 280),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "关于 Ditto4Mac"
-        window.isReleasedWhenClosed = false
-        window.contentViewController = NSHostingController(rootView: AboutView())
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
-        aboutWindow = window
     }
+
+    // MARK: - NSWindowDelegate
+
+    func windowWillClose(_ notification: Notification) {
+        // 设置/关于窗口全部关闭后，恢复菜单栏应用的 accessory 模式，避免残留 Dock 图标
+        if settingsWindow?.isVisible != true && aboutWindow?.isVisible != true {
+            NSApp.setActivationPolicy(.accessory)
+        }
+    }
+
 }
 
 extension Notification.Name {

@@ -17,11 +17,14 @@ final class ClipboardMonitor {
     
     func startMonitoring() {
         stopMonitoring()
-        timer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: pollingInterval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.checkForChanges()
             }
         }
+        // 加入 common mode，避免菜单跟踪/窗口拖拽等场景下暂停轮询
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
     
     func stopMonitoring() {

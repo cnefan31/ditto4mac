@@ -36,21 +36,35 @@ class StorageService {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
 
-        // 加载或初始化设置
-        if let data = try? Data(contentsOf: settingsURL),
-           let decoded = try? decoder.decode(AppSettings.self, from: data) {
-            settings = decoded
+        // 加载或初始化设置；若文件损坏则先备份再重建
+        if let data = try? Data(contentsOf: settingsURL) {
+            if let decoded = try? decoder.decode(AppSettings.self, from: data) {
+                settings = decoded
+            } else {
+                backupCorruptedFile(at: settingsURL)
+                saveSettingsInternal()
+            }
         } else {
             saveSettingsInternal()
         }
 
-        // 加载或初始化索引
-        if let data = try? Data(contentsOf: indexURL),
-           let decoded = try? decoder.decode(IndexData.self, from: data) {
-            index = decoded
+        // 加载或初始化索引；若文件损坏则先备份再重建
+        if let data = try? Data(contentsOf: indexURL) {
+            if let decoded = try? decoder.decode(IndexData.self, from: data) {
+                index = decoded
+            } else {
+                backupCorruptedFile(at: indexURL)
+                saveIndex()
+            }
         } else {
             saveIndex()
         }
+    }
+
+    private func backupCorruptedFile(at url: URL) {
+        let backupURL = url.appendingPathExtension("bak")
+        try? FileManager.default.removeItem(at: backupURL)
+        try? FileManager.default.copyItem(at: url, to: backupURL)
     }
 
     // MARK: - 读取
@@ -166,25 +180,61 @@ class StorageService {
     // MARK: - 存储路径迁移
 
     func migrateStorage(to newPath: String) -> Bool {
-        let newURL = URL(fileURLWithPath: (newPath as NSString).expandingTildeInPath)
-        guard newURL != storageURL else { return true }
+        let newURL = URL(fileURLWithPath: (newPath as NSString).expandingTildeInPath).standardizedFileURL
+        let oldURL = storageURL.standardizedFileURL
+        guard newURL != oldURL else {
+            // 同一路径的不同写法也统一更新 settings 中的 storagePath
+            if settings.storagePath != newPath {
+                settings.storagePath = newPath
+                saveSettingsInternal()
+            }
+            return true
+        }
+
+        let newIndexURL = newURL.appendingPathComponent("index.json")
+        let newSettingsURL = newURL.appendingPathComponent("settings.json")
+        let newItemsDirURL = newURL.appendingPathComponent("items")
+
+        // 防止覆盖已有数据；目标路径若已存在索引或设置，拒绝迁移
+        guard !FileManager.default.fileExists(atPath: newIndexURL.path),
+              !FileManager.default.fileExists(atPath: newSettingsURL.path) else {
+            return false
+        }
 
         do {
-            try FileManager.default.createDirectory(at: newURL.appendingPathComponent("items"),
+            try FileManager.default.createDirectory(at: newItemsDirURL,
                                                      withIntermediateDirectories: true)
-            try FileManager.default.copyItem(at: indexURL, to: newURL.appendingPathComponent("index.json"))
-            try FileManager.default.copyItem(at: settingsURL, to: newURL.appendingPathComponent("settings.json"))
-            let items = try FileManager.default.contentsOfDirectory(at: itemsDirURL, includingPropertiesForKeys: nil)
+
+            try FileManager.default.copyItem(at: indexURL, to: newIndexURL)
+            try FileManager.default.copyItem(at: settingsURL, to: newSettingsURL)
+
+            let items = try FileManager.default.contentsOfDirectory(at: itemsDirURL,
+                                                                    includingPropertiesForKeys: nil)
             for itemURL in items {
-                try FileManager.default.copyItem(at: itemURL, to: newURL.appendingPathComponent("items").appendingPathComponent(itemURL.lastPathComponent))
+                let destination = newItemsDirURL.appendingPathComponent(itemURL.lastPathComponent)
+                if !FileManager.default.fileExists(atPath: destination.path) {
+                    try FileManager.default.copyItem(at: itemURL, to: destination)
+                }
             }
-            // 更新内部 URL
+
+            // 更新内部 URL 后再更新 settings 中的 storagePath
             storageURL = newURL
-            indexURL = newURL.appendingPathComponent("index.json")
-            settingsURL = newURL.appendingPathComponent("settings.json")
-            itemsDirURL = newURL.appendingPathComponent("items")
-            // 清理旧目录
-            try? FileManager.default.removeItem(at: storageURL)
+            indexURL = newIndexURL
+            settingsURL = newSettingsURL
+            itemsDirURL = newItemsDirURL
+
+            settings.storagePath = newPath
+            saveSettingsInternal()
+
+            // 仅在新旧目录互不为祖先关系时清理旧目录，避免误删迁移目标
+            let oldPath = oldURL.path
+            let newPathStandard = newURL.path
+            let isNewInsideOld = newPathStandard.hasPrefix(oldPath + "/")
+            let isOldInsideNew = oldPath.hasPrefix(newPathStandard + "/")
+            if !isNewInsideOld && !isOldInsideNew {
+                try? FileManager.default.removeItem(at: oldURL)
+            }
+
             return true
         } catch {
             return false

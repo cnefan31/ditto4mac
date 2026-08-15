@@ -30,7 +30,7 @@ struct AboutView: View {
 
             Spacer()
 
-            Text("v1.0 · 纯 SwiftUI 构建 · 零第三方依赖")
+            Text("v1.1.0 · 纯 SwiftUI 构建 · 零第三方依赖")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }

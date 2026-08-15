@@ -5,7 +5,6 @@ struct ClipboardItemRow: View {
     let item: ClipboardItem
     let text: String
     let isPinned: Bool
-    let isHighlighted: Bool
     let searchText: String
     let isEven: Bool
 

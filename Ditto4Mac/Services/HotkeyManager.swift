@@ -5,6 +5,7 @@ import AppKit
 @MainActor
 final class HotkeyManager {
     private var hotKeyRef: EventHotKeyRef?
+    private var eventHandlerRef: EventHandlerRef?
     private static var currentCallback: (() -> Void)?
 
     /// 快捷键触发时回调
@@ -70,14 +71,24 @@ final class HotkeyManager {
             return noErr
         }
 
-        InstallEventHandler(
+        var handlerRef: EventHandlerRef?
+        let installStatus = InstallEventHandler(
             GetEventDispatcherTarget(),
             handlerUPP,
             1,
             &eventType,
             nil,
-            nil
+            &handlerRef
         )
+        guard installStatus == noErr else {
+            print("[HotkeyManager] Failed to install event handler: \(installStatus)")
+            if let ref = hotKeyRef {
+                UnregisterEventHotKey(ref)
+                hotKeyRef = nil
+            }
+            return
+        }
+        eventHandlerRef = handlerRef
     }
 
     /// 注销全局快捷键
@@ -85,6 +96,10 @@ final class HotkeyManager {
         if let ref = hotKeyRef {
             UnregisterEventHotKey(ref)
             hotKeyRef = nil
+        }
+        if let ref = eventHandlerRef {
+            RemoveEventHandler(ref)
+            eventHandlerRef = nil
         }
         HotkeyManager.currentCallback = nil
     }
