@@ -19,6 +19,9 @@ class StorageService {
     /// 当前设置缓存
     private var settings: AppSettings
 
+    /// 文本内容缓存，避免搜索/列表时频繁读取磁盘
+    private let textCache = NSCache<NSString, NSString>()
+
     init(storagePath: String? = nil) {
         let path = storagePath ?? AppSettings().storagePath
         storageURL = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
@@ -82,8 +85,17 @@ class StorageService {
     }
 
     func loadText(for item: ClipboardItem) -> String? {
+        let key = item.id as NSString
+        if let cached = textCache.object(forKey: key) {
+            return cached as String
+        }
+
         let fileURL = itemsDirURL.appendingPathComponent(item.textFilename)
-        return try? String(contentsOf: fileURL, encoding: .utf8)
+        guard let text = try? String(contentsOf: fileURL, encoding: .utf8) else {
+            return nil
+        }
+        textCache.setObject(text as NSString, forKey: key)
+        return text
     }
 
     func loadSettings() -> AppSettings {
@@ -97,6 +109,7 @@ class StorageService {
         index.items.append(item)
         let fileURL = itemsDirURL.appendingPathComponent(item.textFilename)
         try? text.write(to: fileURL, atomically: true, encoding: .utf8)
+        textCache.setObject(text as NSString, forKey: item.id as NSString)
         saveIndex()
         enforceMaxItems()
     }
@@ -113,6 +126,7 @@ class StorageService {
     func deleteItem(_ id: String) {
         let fileURL = itemsDirURL.appendingPathComponent("\(id).txt")
         try? FileManager.default.removeItem(at: fileURL)
+        textCache.removeObject(forKey: id as NSString)
         index.items.removeAll { $0.id == id }
         saveIndex()
     }
@@ -167,11 +181,12 @@ class StorageService {
         if unpinned.count > maxItems {
             let sorted = unpinned.sorted { $0.createdAt < $1.createdAt }
             let toRemove = sorted.prefix(unpinned.count - maxItems)
+            let removeIds = Set(toRemove.map { $0.id })
             for item in toRemove {
                 let fileURL = itemsDirURL.appendingPathComponent(item.textFilename)
                 try? FileManager.default.removeItem(at: fileURL)
+                textCache.removeObject(forKey: item.id as NSString)
             }
-            let removeIds = Set(toRemove.map { $0.id })
             index.items.removeAll { removeIds.contains($0.id) }
             saveIndex()
         }

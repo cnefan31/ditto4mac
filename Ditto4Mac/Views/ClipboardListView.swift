@@ -9,7 +9,7 @@ struct ClipboardListView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 搜索框 + 添加按钮
+            // 搜索框
             HStack(spacing: 4) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -71,6 +71,19 @@ struct ClipboardListView: View {
                             )
                             .padding(.horizontal, 4)
                         }
+
+                        if viewModel.canLoadMore {
+                            Button {
+                                viewModel.loadMore()
+                            } label: {
+                                Text("加载更多")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                     .padding(.vertical, 2)
                 }
@@ -86,10 +99,11 @@ struct ClipboardListView: View {
     private var contentHeight: CGFloat {
         let searchBarHeight: CGFloat = 28
         let rowHeight: CGFloat = 42
+        let loadMoreHeight: CGFloat = viewModel.canLoadMore ? 36 : 0
         let itemCount = viewModel.filteredItems().count
         if itemCount == 0 {
             return searchBarHeight + 120
         }
-        return min(searchBarHeight + CGFloat(itemCount) * rowHeight + 4, 400)
+        return min(searchBarHeight + CGFloat(itemCount) * rowHeight + 4 + loadMoreHeight, 400)
     }
 }

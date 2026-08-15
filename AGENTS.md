@@ -46,6 +46,6 @@ App uses **NSStatusBar + NSPanel** (not SwiftUI MenuBarExtra) for full control o
 
 ## Known Issues
 
-- No test target exists (`swift test` does nothing).
+- Test target exists under `Tests/Ditto4MacTests`; run `swift test`.
 - Notification uses `ditto4macHotkeyTriggered` custom name — imported in `Ditto4MacApp.swift`.
 - `AppDelegate.viewModel` is `let` (initialized eagerly) to avoid nil-crash in Settings scene.

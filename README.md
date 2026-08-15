@@ -23,6 +23,7 @@ macOS 菜单栏剪切板管理器 — 轻量、零依赖的剪贴板历史工具
 ```bash
 # Debug
 swift build
+swift test
 bash scripts/build_app.sh
 
 # Release（发布包）
@@ -62,6 +63,10 @@ Ditto4Mac/
 ├── Resources/                   # 资源文件
 ├── Sources/main.swift           # 未使用占位文件
 └── Package.swift                # 内层清单（已废弃，参考 AGENTS.md）
+
+Tests/
+└── Ditto4MacTests/
+    └── StorageServiceTests.swift # StorageService 单元测试
 ```
 
 ## 数据存储

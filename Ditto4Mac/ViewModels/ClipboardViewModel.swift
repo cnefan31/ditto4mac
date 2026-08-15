@@ -6,6 +6,7 @@ final class ClipboardViewModel: ObservableObject {
     @Published var items: [ClipboardItem] = []
     @Published var searchText: String = ""
     @Published var selectedItemId: String?
+    @Published var displayLimit: Int = 0
     
     private let storage: StorageService
     private var monitor: ClipboardMonitor
@@ -16,6 +17,7 @@ final class ClipboardViewModel: ObservableObject {
     init(storage: StorageService? = nil) {
         self.storage = storage ?? StorageService()
         self.cachedSettings = self.storage.loadSettings()
+        self.displayLimit = self.cachedSettings.displayCount
         self.monitor = ClipboardMonitor(pollingInterval: self.cachedSettings.pollingInterval)
         self.hotkey = HotkeyManager()
         
@@ -52,16 +54,6 @@ final class ClipboardViewModel: ObservableObject {
         items = storage.loadItems()
     }
     
-    /// 将指定记录写入系统剪切板
-    func selectItem(_ item: ClipboardItem) {
-        guard let text = storage.loadText(for: item) else { return }
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setString(text, forType: .string)
-        monitor.markOwnWrite()
-        selectedItemId = item.id
-    }
-    
     /// 将指定记录写入系统剪切板并置顶
     func copyAndBumpToTop(_ item: ClipboardItem) {
         guard let text = storage.loadText(for: item) else { return }
@@ -95,19 +87,23 @@ final class ClipboardViewModel: ObservableObject {
         items = storage.loadItems()
     }
     
-    /// 手动添加固定片段
-    func addPinnedItem(text: String) {
-        guard !text.isEmpty, text.count <= cachedSettings.maxCharsPerItem else { return }
-        let item = ClipboardItem(isPinned: true, pinnedAt: Date())
-        storage.saveItem(item, text: text)
-        items = storage.loadItems()
-    }
-    
     /// 删除记录
     func deleteItem(_ item: ClipboardItem) {
         storage.deleteItem(item.id)
         items = storage.loadItems()
     }
+
+    /// 加载更多历史记录
+    func loadMore() {
+        let target = displayLimit + cachedSettings.displayCount
+        displayLimit = min(target, max(totalCount, displayLimit))
+    }
+
+    /// 是否还有更多历史记录可加载
+    var canLoadMore: Bool {
+        searchText.isEmpty && displayLimit < totalCount
+    }
+
     
     /// 搜索（由 View 层调用，使用 searchText）
     func filteredItems() -> [ClipboardItem] {
@@ -160,6 +156,11 @@ final class ClipboardViewModel: ObservableObject {
             monitor.startMonitoring()
         }
 
+        // 默认显示条数变化时重置已加载数量
+        if oldSettings.displayCount != newSettings.displayCount {
+            displayLimit = newSettings.displayCount
+        }
+
         return true
     }
 
@@ -191,11 +192,10 @@ final class ClipboardViewModel: ObservableObject {
     
     // MARK: - 计算属性
     
-    /// 显示用的记录列表（前 displayCount 条）
+    /// 显示用的记录列表（前 displayLimit 条，支持“加载更多”）
     var displayItems: [ClipboardItem] {
-        let count = cachedSettings.displayCount
         let sorted = storage.loadItems()
-        return Array(sorted.prefix(count))
+        return Array(sorted.prefix(displayLimit))
     }
     
     /// 总记录数（用于判断是否需要"加载更多"）
