@@ -92,3 +92,51 @@ scripts/
 ## 许可证
 
 MIT
+
+## 发布（GitHub Release 直装版）
+
+推荐使用 `scripts/release.sh` 生成已签名、已公证、已 stapling 的 DMG 和 ZIP。
+用户下载 DMG 后直接拖入 Applications 即可打开，无需右键或终端命令。
+
+### 本地发布
+
+需要准备：
+
+- Apple Developer Program（付费）
+- Developer ID Application 证书
+- App 专用密码
+
+```bash
+export DEVELOPER_ID_APPLICATION="Developer ID Application: Your Name (TEAMID)"
+export NOTARY_APPLE_ID="you@example.com"
+export NOTARY_TEAM_ID="TEAMID"
+export NOTARY_PASSWORD="app-specific-password"
+
+bash scripts/release.sh 1.2.2
+```
+
+产物：
+
+- `.build/release/Ditto4Mac-1.2.2.dmg`
+- `.build/release/Ditto4Mac-1.2.2-app.zip`
+
+### GitHub Actions 自动发布
+
+在仓库 Secrets 中配置：
+
+- `MACOS_CERTIFICATE_P12`：Developer ID Application 证书 `.p12` 的 base64
+- `MACOS_CERTIFICATE_PASSWORD`：`.p12` 密码
+- `KEYCHAIN_PASSWORD`：CI 临时 keychain 密码（随便设置一个强密码）
+- `DEVELOPER_ID_APPLICATION`：证书完整名称
+- `NOTARY_APPLE_ID`：Apple ID
+- `NOTARY_TEAM_ID`：Team ID
+- `NOTARY_PASSWORD`：App 专用密码
+
+然后推送 tag：
+
+```bash
+git tag v1.2.2
+git push origin v1.2.2
+```
+
+工作流会自动构建、签名、公证、staple，并上传 DMG/ZIP 到 GitHub Release。

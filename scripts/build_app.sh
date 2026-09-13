@@ -3,6 +3,8 @@ set -e
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_NAME="Ditto4Mac"
+APP_VERSION="${APP_VERSION:-1.1.0}"
+APP_BUILD_VERSION="${APP_BUILD_VERSION:-11}"
 BUILD_MODE="${1:-debug}"
 UNIVERSAL=0
 if [ "$2" = "--universal" ]; then
@@ -51,7 +53,7 @@ cp "$BUILD_DIR/$APP_NAME" "$MACOS_DIR/"
 cp "$PROJECT_ROOT/scripts/AppIcon.icns" "$RESOURCES_DIR/"
 
 # Generate Info.plist
-cat > "$CONTENTS/Info.plist" << 'PLIST'
+cat > "$CONTENTS/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -71,9 +73,9 @@ cat > "$CONTENTS/Info.plist" << 'PLIST'
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1.0</string>
+	<string>${APP_VERSION}</string>
 	<key>CFBundleVersion</key>
-	<string>11</string>
+	<string>${APP_BUILD_VERSION}</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>

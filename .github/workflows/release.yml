@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -16,52 +16,47 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Build Universal Binary
-        run: bash scripts/build_app.sh release --universal
+      - name: Determine version
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Create zip archive
+      - name: Import Developer ID certificate
+        env:
+          CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          cd .build/release
-          ditto -c -k --keepParent Ditto4Mac.app "Ditto4Mac-${{ github.ref_name }}.zip"
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          echo -n "$CERTIFICATE_P12" | base64 -D > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+      - name: Build, sign, notarize, and package
+        env:
+          DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          APP_BUILD_VERSION: ${{ github.run_number }}
+        run: bash scripts/release.sh "${{ steps.version.outputs.VERSION }}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: .build/release/Ditto4Mac-*.zip
+          files: |
+            .build/release/Ditto4Mac-*.dmg
+            .build/release/Ditto4Mac-*-app.zip
           generate_release_notes: true
           body: |
             ## 安装说明
 
-            ### 1. 下载并解压
-            下载 `Ditto4Mac-*.zip`，解压后将 `Ditto4Mac.app` 拖到 `/Applications/` 目录
+            1. 下载 `.dmg`
+            2. 打开 DMG，将 `Ditto4Mac.app` 拖入 `Applications`
+            3. 正常打开即可，无需右键或终端命令
 
-            ### 2. 首次打开（绕过 Gatekeeper）
-            > 本应用未经 Apple 公证，首次打开时系统会拦截。请选择以下任一方式：
-
-            **方式 A（推荐）：右键打开**
-            1. 在 Finder 中找到 `Ditto4Mac.app`
-            2. **右键点击** → 选择 **"打开"**
-            3. 在弹出的对话框中点击 **"打开"**
-
-            **方式 B：终端命令**
-            ```bash
-            xattr -cr /Applications/Ditto4Mac.app
-            open /Applications/Ditto4Mac.app
-            ```
-
-            ### 3. 授权辅助功能
-            在 **系统设置 → 隐私与安全性 → 辅助功能** 中授权 Ditto4Mac（用于点击面板外自动隐藏）
-
-            ## 使用方法
-
-            | 操作 | 方式 |
-            |------|------|
-            | 弹出历史窗口 | `Cmd+Shift+V` 或左键菜单栏图标 |
-            | 关于 / 设置 / 退出 | 右键菜单栏图标 |
-            | 复制记录 | 点击历史窗口中的记录 |
-            | 搜索记录 | 在搜索框输入关键词 |
-
-            ## 系统要求
-
-            - macOS 13 (Ventura)+
-            - Universal Binary（同时支持 Apple Silicon 和 Intel）
+            首次运行如需“辅助功能”权限，请在系统设置中授权。
