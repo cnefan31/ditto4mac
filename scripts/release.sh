@@ -11,13 +11,18 @@ VERSION="${VERSION#v}"
 
 export APP_VERSION="$VERSION"
 export APP_BUILD_VERSION="${APP_BUILD_VERSION:-${GITHUB_RUN_NUMBER:-$(date +%Y%m%d%H%M)}}"
-if [ -z "${DEVELOPER_ID_APPLICATION:-}" ]; then
-  echo "ERROR: set DEVELOPER_ID_APPLICATION, e.g."
-  echo "  export DEVELOPER_ID_APPLICATION=\"Developer ID Application: Your Name (TEAMID)\""
-  exit 1
+SKIP_SIGNING="${SKIP_SIGNING:-0}"
+if [ "$SKIP_SIGNING" = "1" ]; then
+  echo "==> SKIP_SIGNING=1, using the ad-hoc signature from build_app.sh"
+else
+  if [ -z "${DEVELOPER_ID_APPLICATION:-}" ]; then
+    echo "ERROR: set DEVELOPER_ID_APPLICATION or SKIP_SIGNING=1"
+    exit 1
+  fi
 fi
 
-if [ "${SKIP_NOTARIZATION:-0}" = "1" ]; then
+if [ "$SKIP_SIGNING" = "1" ] || [ "${SKIP_NOTARIZATION:-0}" = "1" ]; then
+  export SKIP_NOTARIZATION=1
   echo "==> SKIP_NOTARIZATION=1, skip notarization"
 else
   if [ -z "${NOTARY_KEYCHAIN_PROFILE:-}" ]; then
@@ -34,12 +39,16 @@ APP_VERSION="$VERSION" APP_BUILD_VERSION="$APP_BUILD_VERSION" \
 echo "==> Removing extended attributes"
 xattr -cr "$APP_BUNDLE"
 
-echo "==> Signing with Developer ID + hardened runtime"
-codesign --force --options runtime --timestamp \
-  --sign "$DEVELOPER_ID_APPLICATION" \
-  "$APP_BUNDLE"
+if [ "$SKIP_SIGNING" = "1" ]; then
+  echo "==> SKIP_SIGNING=1, keeping the ad-hoc app signature"
+else
+  echo "==> Signing with Developer ID + hardened runtime"
+  codesign --force --options runtime --timestamp \
+    --sign "$DEVELOPER_ID_APPLICATION" \
+    "$APP_BUNDLE"
 
-codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
+  codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
+fi
 notarize() {
   local target="$1"
   if [ "${SKIP_NOTARIZATION:-0}" = "1" ]; then
@@ -67,7 +76,7 @@ ditto -c -k --keepParent "$APP_BUNDLE" "$APP_ZIP"
 echo "==> Notarizing app"
 notarize "$APP_ZIP"
 
-if [ "${SKIP_NOTARIZATION:-0}" = "1" ]; then
+if [ "$SKIP_SIGNING" = "1" ] || [ "${SKIP_NOTARIZATION:-0}" = "1" ]; then
   echo "==> SKIP_NOTARIZATION=1, skip stapling app"
 else
   echo "==> Stapling app"
@@ -92,15 +101,19 @@ hdiutil create -volname "$APP_NAME" \
   -ov -format UDZO \
   "$DMG"
 
-echo "==> Signing DMG"
-codesign --force --timestamp \
-  --sign "$DEVELOPER_ID_APPLICATION" \
-  "$DMG"
+if [ "$SKIP_SIGNING" = "1" ]; then
+  echo "==> SKIP_SIGNING=1, leaving DMG unsigned"
+else
+  echo "==> Signing DMG"
+  codesign --force --timestamp \
+    --sign "$DEVELOPER_ID_APPLICATION" \
+    "$DMG"
+fi
 
 echo "==> Notarizing DMG"
 notarize "$DMG"
 
-if [ "${SKIP_NOTARIZATION:-0}" = "1" ]; then
+if [ "$SKIP_SIGNING" = "1" ] || [ "${SKIP_NOTARIZATION:-0}" = "1" ]; then
   echo "==> SKIP_NOTARIZATION=1, skip stapling DMG"
 else
   echo "==> Stapling DMG"

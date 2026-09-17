@@ -20,7 +20,30 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Detect signing credentials
+        id: signing
+        env:
+          CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          DEVELOPER_ID_APPLICATION: ${{ secrets.DEVELOPER_ID_APPLICATION }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          if [[ -n "$CERTIFICATE_P12" && -n "$CERTIFICATE_PASSWORD" && \
+                -n "$KEYCHAIN_PASSWORD" && -n "$DEVELOPER_ID_APPLICATION" && \
+                -n "$NOTARY_APPLE_ID" && -n "$NOTARY_TEAM_ID" && \
+                -n "$NOTARY_PASSWORD" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Developer ID signing and notarization enabled"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Signing secrets not configured; using ad-hoc release artifacts"
+          fi
+
       - name: Import Developer ID certificate
+        if: steps.signing.outputs.enabled == 'true'
         env:
           CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
@@ -43,6 +66,7 @@ jobs:
           NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
           NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
           APP_BUILD_VERSION: ${{ github.run_number }}
+          SKIP_SIGNING: ${{ steps.signing.outputs.enabled != 'true' && '1' || '0' }}
         run: bash scripts/release.sh "${{ steps.version.outputs.VERSION }}"
 
       - name: Create GitHub Release
@@ -60,3 +84,6 @@ jobs:
             3. 正常打开即可，无需右键或终端命令
 
             首次运行如需“辅助功能”权限，请在系统设置中授权。
+
+            如果本次发布未配置 Apple Developer ID secrets，macOS 可能会显示安全提示，
+            请在 Finder 中右键点击 App，选择“打开”。
