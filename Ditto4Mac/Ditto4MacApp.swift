@@ -34,23 +34,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             matching: [.leftMouseDown, .rightMouseDown]
         ) { [weak self] event in
             guard let self, let panel = self.clipboardPanel, panel.isVisible else { return }
-            // 使用 panel.frame（屏幕坐标）判断点击是否在面板外部，包含标题栏
-            if !panel.frame.contains(event.locationInWindow) {
+            // NSEvent.mouseLocation 明确是屏幕坐标，panel.frame 也使用屏幕坐标。
+            // frame 包含标题栏，因此拖动或点击标题栏不会触发隐藏。
+            if !panel.frame.contains(NSEvent.mouseLocation) {
                 DispatchQueue.main.async { panel.orderOut(nil) }
             }
         }
 
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self,
-            selector: #selector(autoHidePanel),
-            name: NSWorkspace.didActivateApplicationNotification,
-            object: nil
-        )
-    }
-
-    @objc private func autoHidePanel() {
-        guard let panel = clipboardPanel, panel.isVisible else { return }
-        panel.orderOut(nil)
     }
 
     // MARK: - 菜单栏
@@ -82,6 +72,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             panel.title = "Ditto4Mac"
             panel.isFloatingPanel = true
             panel.level = .floating
+            panel.isMovableByWindowBackground = true
             panel.collectionBehavior = [.canJoinAllSpaces, .ignoresCycle]
             panel.isReleasedWhenClosed = false
             panel.contentViewController = NSHostingController(
