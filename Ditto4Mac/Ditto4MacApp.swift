@@ -62,6 +62,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             return
         }
 
+        viewModel.refreshDisplayTime()
+
         if clipboardPanel == nil {
             let panel = NSPanel(
                 contentRect: NSRect(x: 0, y: 0, width: 380, height: 440),

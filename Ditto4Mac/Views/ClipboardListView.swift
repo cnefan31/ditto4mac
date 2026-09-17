@@ -60,6 +60,7 @@ struct ClipboardListView: View {
                                 text: text,
                                 isPinned: item.isPinned,
                                 searchText: viewModel.searchText,
+                                relativeTime: viewModel.relativeTime(for: item.createdAt),
                                 isEven: index.isMultiple(of: 2),
                                 onTap: {
                                     viewModel.copyAndBumpToTop(item)

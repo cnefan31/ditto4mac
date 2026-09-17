@@ -7,10 +7,16 @@ final class ClipboardViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published var selectedItemId: String?
     @Published var displayLimit: Int = 0
+    @Published private(set) var displayTimeReference = Date()
     
     private let storage: StorageService
     private var monitor: ClipboardMonitor
     private let hotkey: HotkeyManager
+    private let relativeDateFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }()
     
     private var cachedSettings: AppSettings
     
@@ -37,6 +43,15 @@ final class ClipboardViewModel: ObservableObject {
     
     // MARK: - 公开方法
     
+    /// 在面板打开时刷新一次相对时间参考点，避免窗口内持续更新时间文本。
+    func refreshDisplayTime() {
+        displayTimeReference = Date()
+    }
+
+    func relativeTime(for date: Date) -> String {
+        relativeDateFormatter.localizedString(for: date, relativeTo: displayTimeReference)
+    }
+
     /// 新复制内容处理
     func handleNewContent(_ text: String) {
         guard !text.isEmpty else { return }

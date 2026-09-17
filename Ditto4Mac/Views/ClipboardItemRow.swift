@@ -6,6 +6,7 @@ struct ClipboardItemRow: View {
     let text: String
     let isPinned: Bool
     let searchText: String
+    let relativeTime: String
     let isEven: Bool
 
     let onTap: () -> Void
@@ -34,7 +35,7 @@ struct ClipboardItemRow: View {
                             .lineLimit(1)
                     }
 
-                    Text(item.createdAt, style: .relative)
+                    Text(relativeTime)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
